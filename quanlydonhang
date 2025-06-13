@@ -1,0 +1,792 @@
+<style>
+  body {
+      font-family: sans-serif;
+      font-size: 0.9em;
+  }
+  table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      table-layout: auto;
+  }
+  th, td {
+      border: 1px solid #ddd;
+      padding: 6px;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+  }
+  th {
+      background-color: #f2f2f2;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+  }
+  th.col-stt { /* Style cho cột STT */
+      width: 40px;
+      text-align: center;
+  }
+  td.col-stt {
+      text-align: center;
+  }
+  th.col-product-info, td.col-product-info,
+  th.col-notes, td.col-notes,
+  th.col-address, td.col-address {
+      white-space: normal;
+      min-width: 150px;
+  }
+   td.col-image img {
+      max-width: 100px;
+      max-height: 70px;
+      display: block;
+      margin: auto;
+  }
+  td.col-image a {
+      display: block;
+      text-align: center;
+  }
+  .status-select {
+      padding: 5px;
+      border-radius: 4px;
+      min-width: 130px;
+  }
+  .save-btn {
+      padding: 5px 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+  }
+  .save-btn:hover {
+      background-color: #45a049;
+  }
+  #loading, #message {
+      margin-top: 15px;
+      font-weight: bold;
+  }
+  .filter-container {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border: 1px solid #eee;
+      border-radius: 5px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+  }
+  .filter-container > div {
+      display: flex;
+      flex-direction: column;
+  }
+  .filter-container label {
+      font-weight: bold;
+      margin-bottom: 3px;
+  }
+  .filter-container select, .filter-container input[type="text"], .filter-container input[type="date"] {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      min-width: 180px;
+  }
+  #tableContainer {
+      width: 100%;
+      overflow-x: auto;
+      margin-top: 10px;
+  }
+  /* CSS cho phân trang */
+  .pagination-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 20px;
+      margin-bottom: 20px;
+  }
+  .pagination-container button {
+      background-color: #f0f0f0;
+      border: 1px solid #ddd;
+      color: #333;
+      padding: 8px 12px;
+      margin: 0 3px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+  }
+  .pagination-container button:hover:not(:disabled) {
+      background-color: #e0e0e0;
+  }
+  .pagination-container button:disabled {
+      color: #aaa;
+      cursor: not-allowed;
+      background-color: #f9f9f9;
+  }
+  .pagination-container .page-number {
+      padding: 8px 12px;
+      margin: 0 5px;
+      font-weight: bold;
+  }
+  .pagination-container .active-page {
+      background-color: #007bff;
+      color: white;
+      border-color: #007bff;
+  }
+  th.col-review-images, td.col-review-images {
+      min-width: 180px; /* Điều chỉnh nếu cần */
+      white-space: normal;
+  }
+  /* THÊM MỚI: Style cho cột tổng tiền */
+  th.col-total-amount, td.col-total-amount {
+    min-width: 110px;
+    text-align: right;
+    font-weight: bold;
+    color: #c0392b;
+  }
+  td.col-review-images img.review-thumbnail {
+      max-width: 60px;
+      max-height: 40px;
+      margin: 2px;
+      border: 1px solid #eee;
+      vertical-align: middle;
+  }
+  .review-image-container { /* Container cho ảnh review đã tải lên */
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+      margin-bottom: 5px; /* Thêm khoảng cách với input file */
+  }
+  .upload-review-section input[type="file"] { /* Chỉ input file */
+     font-size: 0.9em;
+     max-width: 150px; /* Giới hạn chiều rộng của input file */
+  }
+  .action-buttons-container {
+      display: flex;
+      flex-direction: column; /* Các nút xếp chồng lên nhau */
+      gap: 5px;
+      align-items: flex-start; /* Căn trái các nút */
+  }
+  .action-buttons-container button {
+      width: 100%; /* Các nút chiếm toàn bộ chiều rộng có sẵn của container */
+      box-sizing: border-box;
+  }
+</style>
+
+<h2>Quản lý đơn hàng</h2>
+
+<!-- ... (keep filter container) ... -->
+<div class="filter-container">
+  <div>
+    <label for="orderIdFilter">Lọc theo Mã ĐH:</label>
+    <input type="text" id="orderIdFilter" placeholder="Nhập mã đơn hàng..." />
+  </div>
+  <div>
+    <label for="dateFilter">Lọc theo Ngày đặt (Từ):</label>
+    <input type="date" id="dateFilterFrom" />
+  </div>
+  <div>
+    <label for="dateFilterTo">Lọc theo Ngày đặt (Đến):</label>
+    <input type="date" id="dateFilterTo" />
+  </div>
+  <div>
+    <label for="phoneFilter">Lọc theo SĐT:</label>
+    <input type="text" id="phoneFilter" placeholder="Nhập số điện thoại..." />
+  </div>
+  <div>
+    <label for="statusFilter">Lọc theo trạng thái:</label>
+    <select id="statusFilter" class="status-select">
+      <option value="">-- Tất cả trạng thái --</option>
+    </select>
+  </div>
+  <button id="applyFiltersBtn" class="save-btn" style="align-self: flex-end;">
+    Áp dụng lọc
+  </button>
+  <button
+    id="clearFiltersBtn"
+    class="save-btn"
+    style="background-color: #f44336; align-self: flex-end;"
+  >
+    Xóa bộ lọc
+  </button>
+</div>
+
+<div id="loading">Đang tải danh sách đơn hàng...</div>
+<div id="message"></div>
+<div id="tableContainer">
+  <table id="ordersTable">
+    <thead>
+      <!-- THAY ĐỔI: Sắp xếp lại thứ tự cột và thêm cột "Tổng tiền" -->
+      <tr>
+        <th class="col-stt">STT</th>
+        <th>Thời gian</th>
+        <th>Mã ĐH</th>
+        <th>Họ tên</th>
+        <th>SĐT</th>
+        <th>Email</th>
+        <th class="col-address">Số nhà, đường</th>
+        <th>P.thức TT</th>
+        <th class="col-notes">Ghi chú</th>
+        <th class="col-product-info">Thông tin ĐH</th>
+        <th class="col-total-amount">Tổng tiền</th>
+        <th class="col-image">Ảnh tải lên (Khách)</th>
+        <th class="col-review-images">Review thiết kế (Admin)</th>
+        <th>Trạng thái</th>
+        <th>Cập nhật TT</th>
+        <th>Lưu</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Dữ liệu đơn hàng sẽ được chèn vào đây -->
+    </tbody>
+  </table>
+</div>
+
+<!-- ... (keep pagination controls) ... -->
+<div id="paginationControls" class="pagination-container"></div>
+
+<script>
+  const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzNfLo4WOqjme-hxTihtSPFaPxA2VvFsQei0R5ye1lLCc25fK5vg2kS5KVFYfANLK3b/exec'; // GIỮ NGUYÊN
+  const statusOptions = ["Chờ xác nhận", "Đang xử lý", "Đang đóng gói", "Đang giao hàng", "Đã giao", "Đã hủy", "Yêu cầu trả hàng"];
+  let allOrdersData = [];
+  let filteredOrdersData = [];
+  let currentPage = 1;
+  const rowsPerPage = 10;
+
+
+  function fetchOrders() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('message').textContent = '';
+      fetch(`${GAS_WEB_APP_URL}?action=getOrders`)
+          .then(response => response.json())
+          .then(data => {
+              document.getElementById('loading').style.display = 'none';
+              if (data.success && Array.isArray(data.data)) {
+                  allOrdersData = data.data;
+                  populateStatusFilterOptions();
+                  applyFilters();
+              } else {
+                  document.getElementById('message').textContent = 'Lỗi khi tải đơn hàng: ' + (data.message || data.error || 'Unknown error');
+                  console.error('Error fetching orders:', data);
+              }
+          })
+          .catch(error => {
+              document.getElementById('loading').style.display = 'none';
+              document.getElementById('message').textContent = 'Lỗi kết nối: ' + error.message;
+              console.error('Network error:', error);
+          });
+  }
+
+  function populateStatusFilterOptions() {
+      const statusFilterSelect = document.getElementById('statusFilter');
+      while (statusFilterSelect.options.length > 1) { statusFilterSelect.remove(1); }
+      statusOptions.forEach(status => {
+          const option = document.createElement('option');
+          option.value = status;
+          option.textContent = status;
+          statusFilterSelect.appendChild(option);
+      });
+  }
+
+  function isValidHttpUrl(string) {
+      let url;
+      try { url = new URL(string); } catch (_) { return false; }
+      return url.protocol === "http:" || url.protocol === "https:" || string.startsWith("https://drive.google.com/file/d/") || string.startsWith("https://drive.google.com/uc?id=");
+  }
+  function parseDateFromString(dateString) {
+      if (!dateString || dateString === 'N/A') return null;
+      const parts = dateString.match(/(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/);
+      if (parts) { return new Date(parts[3], parts[2] - 1, parts[1], parts[4], parts[5], parts[6]); }
+      return null;
+  }
+
+  function applyFilters() {
+      const orderIdKeyword = document.getElementById('orderIdFilter').value.toLowerCase().trim();
+      const dateFromValue = document.getElementById('dateFilterFrom').value;
+      const dateToValue = document.getElementById('dateFilterTo').value;
+      const phoneKeyword = document.getElementById('phoneFilter').value.trim();
+      const selectedStatus = document.getElementById('statusFilter').value;
+
+      let tempFilteredOrders = allOrdersData;
+
+      if (orderIdKeyword) {
+          tempFilteredOrders = tempFilteredOrders.filter(order => order.orderId && order.orderId.toLowerCase().includes(orderIdKeyword));
+      }
+      if (phoneKeyword) {
+          tempFilteredOrders = tempFilteredOrders.filter(order => order.phone && order.phone.includes(phoneKeyword));
+      }
+      if (selectedStatus) {
+          tempFilteredOrders = tempFilteredOrders.filter(order => order.status === selectedStatus);
+      }
+      const dateFrom = dateFromValue ? new Date(dateFromValue) : null;
+      const dateTo = dateToValue ? new Date(dateToValue) : null;
+      if (dateFrom || dateTo) {
+          tempFilteredOrders = tempFilteredOrders.filter(order => {
+              const orderTimestamp = parseDateFromString(order.timestamp);
+              if (!orderTimestamp) return false;
+              let match = true;
+              if (dateFrom) {
+                  const orderDateOnly = new Date(orderTimestamp.getFullYear(), orderTimestamp.getMonth(), orderTimestamp.getDate());
+                  const filterDateFromOnly = new Date(dateFrom.getFullYear(), dateFrom.getMonth(), dateFrom.getDate());
+                  match = match && (orderDateOnly >= filterDateFromOnly);
+              }
+              if (dateTo) {
+                  const orderDateOnly = new Date(orderTimestamp.getFullYear(), orderTimestamp.getMonth(), orderTimestamp.getDate());
+                  const filterDateToOnly = new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate());
+                  match = match && (orderDateOnly <= filterDateToOnly);
+              }
+              return match;
+          });
+      }
+      filteredOrdersData = tempFilteredOrders;
+      currentPage = 1;
+      displayCurrentPage();
+      setupPagination();
+  }
+
+  function displayCurrentPage() {
+      const tableBody = document.getElementById('ordersTable').getElementsByTagName('tbody')[0];
+      tableBody.innerHTML = '';
+
+      if (!filteredOrdersData || filteredOrdersData.length === 0) {
+          const row = tableBody.insertRow();
+          const cell = row.insertCell();
+          // THAY ĐỔI: Tăng colspan lên 16
+          cell.colSpan = 16;
+          cell.textContent = 'Không có đơn hàng nào phù hợp với tiêu chí lọc.';
+          return;
+      }
+
+      const startIndex = (currentPage - 1) * rowsPerPage;
+      const endIndex = startIndex + rowsPerPage;
+      const paginatedOrders = filteredOrdersData.slice(startIndex, endIndex);
+
+      paginatedOrders.forEach((order, index) => {
+          const row = tableBody.insertRow();
+          const stt = startIndex + index + 1;
+          
+          // THAY ĐỔI: Chèn các cell theo đúng thứ tự mới
+          row.insertCell().textContent = stt;
+          row.cells[0].classList.add('col-stt');
+
+          row.insertCell().textContent = order.timestamp || 'N/A';
+          row.insertCell().textContent = order.orderId || 'N/A';
+          row.insertCell().textContent = order.customerName || 'N/A';
+          row.insertCell().textContent = order.phone || 'N/A';
+          row.insertCell().textContent = order.email || 'N/A';
+
+          const addressCell = row.insertCell();
+          addressCell.textContent = order.addressDetail || 'N/A';
+          addressCell.classList.add('col-address');
+
+          row.insertCell().textContent = order.paymentMethod || 'N/A';
+
+          const notesCell = row.insertCell();
+          notesCell.textContent = order.notes || 'N/A';
+          notesCell.classList.add('col-notes');
+
+          const productInfoCell = row.insertCell();
+          productInfoCell.textContent = order.productInfo || 'N/A';
+          productInfoCell.classList.add('col-product-info');
+
+          // --- THÊM MỚI: Cột Tổng tiền ---
+          const totalAmountCell = row.insertCell();
+          totalAmountCell.textContent = order.totalAmount || 'N/A';
+          totalAmountCell.classList.add('col-total-amount');
+          // --------------------------------
+
+          // Cột Ảnh tải lên (Khách)
+          const imageCell = row.insertCell();
+          imageCell.classList.add('col-image');
+          renderImageLinks(imageCell, order.uploadedImage, 'Ảnh KH');
+
+
+          // Cột Review thiết kế (Admin)
+          const reviewImagesCell = row.insertCell();
+          reviewImagesCell.classList.add('col-review-images');
+
+          const reviewImageContainer = document.createElement('div');
+          reviewImageContainer.className = 'review-image-container';
+          reviewImageContainer.id = `review-images-order-${order.orderId}`;
+          renderImageLinks(reviewImageContainer, order.reviewImagesAdmin, 'Ảnh RV');
+
+          const uploadSection = document.createElement('div'); // Vẫn giữ div này để chứa input file
+          uploadSection.className = 'upload-review-section';
+          const fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.multiple = true;
+          fileInput.id = `review-file-${order.orderId}`;
+          fileInput.accept = "image/*";
+
+          uploadSection.appendChild(fileInput);
+
+          reviewImagesCell.appendChild(reviewImageContainer);
+          reviewImagesCell.appendChild(uploadSection);
+
+          // Cột Trạng thái (hiển thị text)
+          const statusDisplayCell = row.insertCell();
+          statusDisplayCell.textContent = order.status || 'Chờ xác nhận';
+          statusDisplayCell.id = `status-display-${order.orderId}`;
+
+
+          // Cột Cập nhật TT (select dropdown)
+          const statusUpdateCell = row.insertCell();
+          const select = document.createElement('select');
+          select.className = 'status-select';
+          select.id = `status-select-${order.orderId}`; // Đổi ID để tránh trùng với ID của input file
+          statusOptions.forEach(opt => {
+              const option = document.createElement('option');
+              option.value = opt;
+              option.textContent = opt;
+              if (opt === order.status) option.selected = true;
+              select.appendChild(option);
+          });
+          statusUpdateCell.appendChild(select);
+
+          // Cột Lưu (chứa các nút hành động)
+          const actionCell = row.insertCell();
+          const actionButtonsContainer = document.createElement('div');
+          actionButtonsContainer.className = 'action-buttons-container';
+
+          const saveAllButton = document.createElement('button');
+          saveAllButton.textContent = 'Lưu Thay Đổi';
+          saveAllButton.className = 'save-btn';
+          saveAllButton.onclick = () => {
+              const selectedStatus = document.getElementById(`status-select-${order.orderId}`).value;
+              const reviewFileInput = document.getElementById(`review-file-${order.orderId}`);
+              saveOrderUpdatesAndImages(
+                  order.orderId,
+                  selectedStatus,
+                  reviewFileInput.files,
+                  `review-images-order-${order.orderId}`,
+                  `review-file-${order.orderId}`,
+                  `status-display-${order.orderId}` // ID của cell hiển thị trạng thái text
+              );
+          };
+          actionButtonsContainer.appendChild(saveAllButton);
+
+          const clearReviewBtn = document.createElement('button');
+          clearReviewBtn.textContent = 'Xóa Ảnh Review';
+          clearReviewBtn.className = 'save-btn';
+          clearReviewBtn.style.backgroundColor = '#f44336';
+          clearReviewBtn.onclick = () => clearReviewImages(order.orderId, `review-images-order-${order.orderId}`);
+          actionButtonsContainer.appendChild(clearReviewBtn);
+
+          actionCell.appendChild(actionButtonsContainer);
+      });
+  }
+
+  // Helper function to render image links/thumbnails
+  function renderImageLinks(cellElement, imageData, altPrefix = 'Ảnh') {
+      cellElement.innerHTML = ''; // Clear previous content
+      let imageUrls = [];
+      if (typeof imageData === 'string' && imageData !== 'N/A' && imageData.trim() !== '') {
+          try {
+              const parsed = JSON.parse(imageData);
+              if (Array.isArray(parsed)) imageUrls = parsed.filter(url => typeof url === 'string' && url.trim() !== '');
+              else imageUrls = imageData.split(',').map(url => url.trim()).filter(url => url);
+          } catch (e) {
+              imageUrls = imageData.split(',').map(url => url.trim()).filter(url => url);
+          }
+      } else if (Array.isArray(imageData)) {
+          imageUrls = imageData.filter(url => typeof url === 'string' && url.trim() !== '');
+      }
+
+      if (imageUrls.length > 0) {
+          imageUrls.forEach((imageUrl, imgIndex) => {
+              if (isValidHttpUrl(imageUrl)) {
+                  const imgLink = document.createElement('a');
+                  imgLink.href = imageUrl;
+                  imgLink.target = "_blank";
+                  imgLink.rel = "noopener noreferrer";
+
+                  const img = document.createElement('img');
+                  let thumbnailUrl = imageUrl; // Default fallback
+                  let fileId = null;
+
+                  if (imageUrl.includes("drive.google.com/file/d/")) {
+                      const fileIdMatch = imageUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+                      if (fileIdMatch && fileIdMatch[1]) {
+                          fileId = fileIdMatch[1];
+                      }
+                  } else if (imageUrl.includes("drive.google.com/uc?")) {
+                      try {
+                         const urlParams = new URLSearchParams(new URL(imageUrl).search);
+                         fileId = urlParams.get('id');
+                      } catch(e) { console.error("Could not parse URL:", imageUrl, e); }
+                  }
+
+                  if (fileId) {
+                      thumbnailUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w100-h70`;
+                  }
+
+                  img.src = thumbnailUrl;
+                  img.alt = `${altPrefix} ${imgIndex + 1}`;
+                  img.className = 'review-thumbnail';
+                  img.onerror = function() {
+                      this.style.display = 'none';
+                      const errorText = document.createElement('span');
+                      errorText.textContent = ` Lỗi tải ${altPrefix} `;
+                      imgLink.appendChild(errorText);
+                  };
+
+                  imgLink.appendChild(img);
+                  cellElement.appendChild(imgLink);
+                  if (imgIndex < imageUrls.length -1) cellElement.append(" ");
+              }
+          });
+      } else {
+          cellElement.textContent = 'Không có ảnh';
+      }
+  }
+
+  async function saveOrderUpdatesAndImages(orderId, newStatus, reviewFiles, reviewImageDisplayContainerId, reviewFileInputId, statusDisplayCellId) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = `Đang xử lý đơn ${orderId}...`;
+      let overallSuccess = true;
+      let statusUpdateMessage = '';
+      let reviewImageMessage = '';
+
+      // --- 1. Cập nhật trạng thái ---
+      try {
+          messageDiv.textContent = `Đang cập nhật trạng thái cho đơn ${orderId}...`;
+          const statusResponse = await fetch(GAS_WEB_APP_URL, {
+              method: 'POST', mode: 'cors', cache: 'no-cache',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'updateStatus', orderId: orderId, newStatus: newStatus })
+          });
+          const statusResult = await statusResponse.json();
+          if (statusResult.success) {
+              statusUpdateMessage = 'Cập nhật trạng thái thành công. ';
+              // Cập nhật data local
+              const orderIndexAll = allOrdersData.findIndex(o => o.orderId === orderId);
+              if (orderIndexAll > -1) allOrdersData[orderIndexAll].status = newStatus;
+              const orderIndexFiltered = filteredOrdersData.findIndex(o => o.orderId === orderId);
+              if (orderIndexFiltered > -1) filteredOrdersData[orderIndexFiltered].status = newStatus;
+
+              // Cập nhật UI trực tiếp cho cell trạng thái
+              const statusDisplayCell = document.getElementById(statusDisplayCellId);
+              if (statusDisplayCell) statusDisplayCell.textContent = newStatus;
+               // Cập nhật giá trị của select box
+              const statusSelectElement = document.getElementById(`status-select-${orderId}`);
+              if (statusSelectElement) statusSelectElement.value = newStatus;
+
+          } else {
+              overallSuccess = false;
+              statusUpdateMessage = `Lỗi cập nhật trạng thái: ${statusResult.message || 'Unknown error'}. `;
+          }
+      } catch (error) {
+          overallSuccess = false;
+          statusUpdateMessage = `Lỗi mạng khi cập nhật trạng thái: ${error.message}. `;
+          console.error('Network error on status update:', error);
+      }
+
+      // --- 2. Xử lý ảnh review nếu có ---
+      let newUploadedImageUrls = null; // Để lưu trữ URL ảnh mới nếu có
+      if (reviewFiles && reviewFiles.length > 0) {
+          messageDiv.textContent = `Đang tải ${reviewFiles.length} ảnh review cho đơn ${orderId}...`;
+          const tempUploadedImageUrls = [];
+          let allUploadsSuccessful = true;
+
+          try {
+              for (let i = 0; i < reviewFiles.length; i++) {
+                  const file = reviewFiles[i];
+                  const base64String = await new Promise((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onload = () => resolve(reader.result);
+                      reader.onerror = error => reject(error);
+                      reader.readAsDataURL(file);
+                  });
+
+                  const uploadResponse = await fetch(GAS_WEB_APP_URL, {
+                      method: 'POST', mode: 'cors', cache: 'no-cache',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                          action: 'uploadFile',
+                          fileData: base64String,
+                          fileName: file.name,
+                          mimeType: file.type
+                      })
+                  });
+                  const uploadResult = await uploadResponse.json();
+                  if (uploadResult.success && uploadResult.fileUrl) {
+                      tempUploadedImageUrls.push(uploadResult.fileUrl);
+                  } else {
+                      allUploadsSuccessful = false;
+                      reviewImageMessage += `Lỗi tải file ${file.name}: ${uploadResult.message || 'Unknown error'}. `;
+                      break;
+                  }
+              }
+
+              if (allUploadsSuccessful && tempUploadedImageUrls.length > 0) {
+                  messageDiv.textContent = `Đang lưu URL ảnh review cho đơn ${orderId}...`;
+                  const saveUrlsResponse = await fetch(GAS_WEB_APP_URL, {
+                      method: 'POST', mode: 'cors', cache: 'no-cache',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                          action: 'saveReviewImageUrls',
+                          orderId: orderId,
+                          imageUrlsJson: JSON.stringify(tempUploadedImageUrls)
+                      })
+                  });
+                  const saveUrlsResult = await saveUrlsResponse.json();
+                  if (saveUrlsResult.success) {
+                      reviewImageMessage += `Đã lưu ${tempUploadedImageUrls.length} ảnh review. `;
+                      newUploadedImageUrls = tempUploadedImageUrls; // Gán URL ảnh mới
+
+                      // Cập nhật data local
+                      const orderIndexAll = allOrdersData.findIndex(o => o.orderId === orderId);
+                      if (orderIndexAll > -1) allOrdersData[orderIndexAll].reviewImagesAdmin = newUploadedImageUrls;
+                      const orderIndexFiltered = filteredOrdersData.findIndex(o => o.orderId === orderId);
+                      if (orderIndexFiltered > -1) filteredOrdersData[orderIndexFiltered].reviewImagesAdmin = newUploadedImageUrls;
+
+                      // Cập nhật UI
+                      const displayContainer = document.getElementById(reviewImageDisplayContainerId);
+                      if (displayContainer) renderImageLinks(displayContainer, newUploadedImageUrls, 'Ảnh RV');
+
+                      const fileInputElement = document.getElementById(reviewFileInputId);
+                      if (fileInputElement) fileInputElement.value = ''; // Clear file input
+                  } else {
+                      overallSuccess = false;
+                      reviewImageMessage += `Lỗi lưu URL ảnh review: ${saveUrlsResult.message || 'Unknown error'}. `;
+                  }
+              } else if (!allUploadsSuccessful) {
+                  overallSuccess = false; // Đã có lỗi tải file
+              }
+          } catch (error) {
+              overallSuccess = false;
+              reviewImageMessage += `Lỗi xử lý ảnh review: ${error.message}. `;
+              console.error('Error processing review images:', error);
+          }
+      } else {
+          reviewImageMessage = 'Không có ảnh review mới được chọn. ';
+      }
+
+      messageDiv.textContent = `Đơn ${orderId}: ${statusUpdateMessage} ${reviewImageMessage}`;
+  }
+
+  async function clearReviewImages(orderId, displayContainerId) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = `Đang xóa ảnh review cho đơn ${orderId}...`;
+      try {
+          const response = await fetch(GAS_WEB_APP_URL, {
+              method: 'POST',
+              mode: 'cors',
+              cache: 'no-cache',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  action: 'saveReviewImageUrls',
+                  orderId: orderId,
+                  imageUrlsJson: JSON.stringify([]) // Send empty array to clear
+              })
+          });
+          const result = await response.json();
+          if (result.success) {
+              messageDiv.textContent = `Đã xóa ảnh review cho đơn ${orderId}.`;
+              const orderIndexAll = allOrdersData.findIndex(o => o.orderId === orderId);
+              if (orderIndexAll > -1) allOrdersData[orderIndexAll].reviewImagesAdmin = [];
+              const orderIndexFiltered = filteredOrdersData.findIndex(o => o.orderId === orderId);
+              if (orderIndexFiltered > -1) filteredOrdersData[orderIndexFiltered].reviewImagesAdmin = [];
+
+              const displayContainer = document.getElementById(displayContainerId);
+              if (displayContainer) renderImageLinks(displayContainer, [], 'Ảnh RV');
+
+          } else {
+              throw new Error(result.message || 'Lỗi không xác định khi xóa ảnh.');
+          }
+      } catch (error) {
+          messageDiv.textContent = 'Lỗi: ' + error.message;
+          console.error('Error clearing review images:', error);
+      }
+  }
+
+  function setupPagination() {
+      const paginationControls = document.getElementById('paginationControls');
+      paginationControls.innerHTML = '';
+
+      const pageCount = Math.ceil(filteredOrdersData.length / rowsPerPage);
+      if (pageCount <= 1) return;
+
+      const prevButton = document.createElement('button');
+      prevButton.textContent = 'Trước';
+      prevButton.disabled = currentPage === 1;
+      prevButton.addEventListener('click', () => {
+          if (currentPage > 1) { currentPage--; displayCurrentPage(); setupPagination(); }
+      });
+      paginationControls.appendChild(prevButton);
+
+      const MAX_VISIBLE_PAGES = 5;
+      let startPage, endPage;
+
+      if (pageCount <= MAX_VISIBLE_PAGES) {
+          startPage = 1; endPage = pageCount;
+      } else {
+          const maxPagesBeforeCurrentPage = Math.floor(MAX_VISIBLE_PAGES / 2);
+          const maxPagesAfterCurrentPage = Math.ceil(MAX_VISIBLE_PAGES / 2) - 1;
+          if (currentPage <= maxPagesBeforeCurrentPage) {
+              startPage = 1; endPage = MAX_VISIBLE_PAGES;
+          } else if (currentPage + maxPagesAfterCurrentPage >= pageCount) {
+              startPage = pageCount - MAX_VISIBLE_PAGES + 1; endPage = pageCount;
+          } else {
+              startPage = currentPage - maxPagesBeforeCurrentPage; endPage = currentPage + maxPagesAfterCurrentPage;
+          }
+      }
+
+      if (startPage > 1) {
+          paginationControls.appendChild(createPageButton(1));
+          if (startPage > 2) {
+               const ellipsis = document.createElement('span');
+               ellipsis.textContent = '...'; ellipsis.className = 'page-number';
+               paginationControls.appendChild(ellipsis);
+          }
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+          paginationControls.appendChild(createPageButton(i));
+      }
+
+      if (endPage < pageCount) {
+          if (endPage < pageCount - 1) {
+               const ellipsis = document.createElement('span');
+               ellipsis.textContent = '...'; ellipsis.className = 'page-number';
+               paginationControls.appendChild(ellipsis);
+          }
+          paginationControls.appendChild(createPageButton(pageCount));
+      }
+
+      const nextButton = document.createElement('button');
+      nextButton.textContent = 'Sau';
+      nextButton.disabled = currentPage === pageCount;
+      nextButton.addEventListener('click', () => {
+          if (currentPage < pageCount) { currentPage++; displayCurrentPage(); setupPagination(); }
+      });
+      paginationControls.appendChild(nextButton);
+  }
+
+  function createPageButton(pageNumber) {
+      const button = document.createElement('button');
+      button.textContent = pageNumber;
+      button.classList.add('page-number');
+      if (pageNumber === currentPage) {
+          button.classList.add('active-page'); button.disabled = true;
+      }
+      button.addEventListener('click', () => {
+          currentPage = pageNumber; displayCurrentPage(); setupPagination();
+      });
+      return button;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+      fetchOrders();
+      document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+      document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+          document.getElementById('orderIdFilter').value = '';
+          document.getElementById('dateFilterFrom').value = '';
+          document.getElementById('dateFilterTo').value = '';
+          document.getElementById('phoneFilter').value = '';
+          document.getElementById('statusFilter').value = '';
+          applyFilters();
+      });
+  });
+</script>
